@@ -5,8 +5,8 @@ classdef mp2rage < AbstractModel
 % N/A
 % Inputs:
 %   (MP2RAGE)       MP2RAGE UNI image.
-%   (B1map)         Normalized transmit excitation field map (B1+). B1+ is defined 
-%                   as a  normalized multiplicative factor such that:
+%   (B1map)         Transmit excitation field map (B1+) with a relative
+%                   scaling factor of 900.
 %                   FA_actual = B1+ * FA_nominal. (OPTIONAL).
 %   (Mask)          Binary mask to a desired region (OPTIONAL).
 %   (INV1mag)       Magnitude image from the first GRE readout (OPTIONAL).
@@ -48,10 +48,10 @@ properties
     voxelwise = 0;
 
     % Protocol
-    Prot  = struct('Hardware',struct('Format',{{'B0 (T)'}},...
+    Prot  = struct('Hardware',struct('Format',{{'B0'}},...
     'Mat', [7]),...
-    'RepetitionTimes',struct('Format',{{'Inv (s)';'Exc (s)'}},'Mat',[6;6.7e-3]), ...
-    'Timing',struct('Format',{{'InversionTimes (s)'}},'Mat',[800e-3;2700e-3]), ...
+    'RepetitionTimes',struct('Format',{{'Inv';'Exc'}},'Mat',[6;6.7e-3]), ...
+    'Timing',struct('Format',{{'InversionTimes'}},'Mat',[800e-3;2700e-3]), ...
     'Sequence',struct('Format',{{'FlipAngles'}},'Mat',[4; 5]),...
     'NumberOfShots',struct('Format',{{'Pre';'Post'}},'Mat',[35; 72]));
 
@@ -62,10 +62,10 @@ properties
     % https://github.com/qMRLab/qMRLab/wiki/Guideline:-GUI#the-optionsgui-is-populated-by
 
     tabletip = struct('table_name',{{'Hardware','RepetitionTimes','Timing','Sequence','NumberOfShots'}},'tip', ...
-    {sprintf(['B0 (T): Static magnetic field strength (Tesla)']),...
-    sprintf(['[Inv (s)]: Repetition time between two INVERSION pulses of the MP2RAGE pulse sequence (seconds)\n -- \n [Exc (s)]: Repetition time between two EXCITATION pulses of the MP2RAGE pulse sequence (seconds)']),...
-    sprintf(['InversionTimes (s): Inversion times for the measurements (seconds)\n [1] 1st time dimension \n [2] 2nd time dimension']),...
-    sprintf(['FlipAngles: Excitation flip angles (degrees)\n [1] 1st time dimension \n [2] 2nd time dimension']),...
+    {sprintf(['B0: Static (main) magnetic field strength']),...
+    sprintf(['[Inv]: Repetition time between two INVERSION pulses of the MP2RAGE pulse sequence \n -- \n [Exc]: Repetition time between two EXCITATION pulses of the MP2RAGE pulse sequence']),...
+    sprintf(['InversionTimes: Inversion times for the measurements \n [1] 1st time dimension \n [2] 2nd time dimension']),...
+    sprintf(['FlipAngles: Excitation flip angles \n [1] 1st time dimension \n [2] 2nd time dimension']),...
     sprintf(['NumberOfShots: Number of shots [Pre] before and [Post] after the k-space center'])
     });
 
@@ -84,7 +84,9 @@ methods
     
         obj.options = button2opts(obj.buttons);
         obj.onlineData_url = obj.getLink('https://osf.io/8x2c9/download?version=4','https://osf.io/k3shf/download?version=1','https://osf.io/k3shf/download?version=1');
-    
+        % Prot values at the time of the construction determine 
+        % what is shown to user in CLI/GUI.
+        obj = setUserProtUnits(obj);
     end
 
     function FitResult = fit(obj,data)
@@ -235,5 +237,23 @@ methods
         
     end % FIT RESULTS END 
 end % METHODS END 
+
+methods(Access = protected)
+    function obj = qMRpatch(obj,loadedStruct, version)
+        obj = qMRpatch@AbstractModel(obj,loadedStruct, version);
+        % v2.5.0 drops unit parantheses
+        if checkanteriorver(version,[2 5 0])
+            obj.Prot.Timing.Format = {'InversionTimes'};
+            obj.Prot.RepetitionTimes.Format = [{'Inv'};{'Exc'}];
+            obj.OriginalProtEnabled = true;
+            obj = setUserProtUnits(obj);
+            obj.tabletip(1).tip = sprintf('B0: Static (main) magnetic field strength');
+            obj.tabletip(2).tip = sprintf('[Inv]: Repetition time between two INVERSION pulses of the MP2RAGE pulse sequence \n -- \n [Exc]: Repetition time between two EXCITATION pulses of the MP2RAGE pulse sequence');
+            obj.tabletip(3).tip = sprintf('InversionTimes: Inversion times for the measurements \n [1] 1st time dimension \n [2] 2nd time dimension');
+            obj.tabletip(4).tip = sprintf('FlipAngles: Excitation flip angles \n [1] 1st time dimension \n [2] 2nd time dimension');
+            obj.tabletip(5).tip = sprintf('NumberOfShots: Number of shots [Pre] before and [Post] after the k-space center');
+        end
+    end
+end
 
 end % CLASSDEF END 

@@ -65,7 +65,7 @@ classdef mt_sat < AbstractModel
         voxelwise = 0;
 
         % Protocol
-        Prot = struct('MTw',struct('Format',{{'FlipAngle' 'TR (s)'}},...
+        Prot = struct('MTw',struct('Format',{{'FlipAngle' 'TR'}},...
                                    'Mat',  [6 0.028]),...
                       'T1w',struct('Format',{{'FlipAngle' 'TR'}},...
                                    'Mat',  [20 0.018]),...
@@ -84,6 +84,9 @@ classdef mt_sat < AbstractModel
     methods
         function obj = mt_sat
             obj.options = button2opts(obj.buttons);
+            % Prot values at the time of the construction determine 
+            % what is shown to user in CLI/GUI.
+            obj = setUserProtUnits(obj);
         end
 
         function FitResult = fit(obj,data)
@@ -128,6 +131,15 @@ classdef mt_sat < AbstractModel
             if checkanteriorver(version,[2 3 1])
                 obj.ProtStyle = struct('prot_namespace',{{'MTw', 'T1w','PDw'}}, ...
                 'style',repmat({'TableNoButton'},[1,3]));
+            end
+
+            % v2.5.0 drop unit names from the Format 
+            if checkanteriorver(version,[2 5 0])
+                obj.Prot.MTw.Format = [{'FlipAngle'},{'TR'}];
+                obj.Prot.PDw.Format = [{'FlipAngle'},{'TR'}];
+                obj.Prot.T1w.Format = [{'FlipAngle'},{'TR'}];
+                obj.OriginalProtEnabled = true;
+                obj = setUserProtUnits(obj);
             end
 
         end

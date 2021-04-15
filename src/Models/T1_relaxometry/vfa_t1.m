@@ -82,10 +82,16 @@ end
 
         function obj = vfa_t1()
             obj.options = button2opts(obj.buttons);
+            % Prot values at the time of the construction determine 
+            % what is shown to user in CLI/GUI.
+            obj = setUserProtUnits(obj);
         end
 
         function Smodel = equation(obj,x)
-            % Generates a VFA signal based on input parameters
+        % Ensure ORIGINAL protocol units on load
+        obj = setOriginalProtUnits(obj);
+            
+        % Generates a VFA signal based on input parameters
             x = mat2struct(x,obj.xnames); % if x is a structure, convert to vector
 
             % Equation: S=M0sin(a)*(1-E)/(1-E)cos(a); E=exp(-TR/T1)
@@ -93,6 +99,9 @@ end
             TR = obj.Prot.VFAData.Mat(1,2);
             E = exp(-TR/x.T1);
             Smodel = x.M0*sin(flipAngles/180*pi)*(1-E)./(1-E*cos(flipAngles/180*pi));
+
+        % Ensure USER protocol units after process
+        obj = setUserProtUnits(obj);
         end
 
        function FitResult = fit(obj,data)
@@ -113,6 +122,9 @@ end
        end
 
        function plotModel(obj,x,data)
+       % Ensure ORIGINAL protocol units on load
+       obj = setOriginalProtUnits(obj);
+
            if nargin<2 || isempty(x), x = obj.st; end
            x = mat2struct(x,obj.xnames);
            disp(x)
@@ -178,8 +190,12 @@ end
 %             ylabel( 'y' );
 %             grid on
 %             saveas(gcf,['temp.jpg']);
+        % Ensure USER protocol units after process
+        obj = setUserProtUnits(obj);
        end
        function [FitResults, data] = Sim_Single_Voxel_Curve(obj, x, Opt,display)
+       % Ensure ORIGINAL protocol units on load
+       obj = setOriginalProtUnits(obj);
            % Simulates Single Voxel
            %
            % :param x: [struct] fit parameters
@@ -197,16 +213,30 @@ end
            if display
                plotModel(obj, FitResults, data);
            end
-       end
+      % Ensure USER protocol units after process
+      obj = setUserProtUnits(obj);   
+     end
 
        function SimVaryResults = Sim_Sensitivity_Analysis(obj, OptTable, Opt)
+           % Ensure ORIGINAL protocol units on load
+            obj = setOriginalProtUnits(obj);
+            
            % SimVaryGUI
            SimVaryResults = SimVary(obj, Opt.Nofrun, OptTable, Opt);
+           
+           % Ensure USER protocol units after process
+            obj = setUserProtUnits(obj);
        end
 
        function SimRndResults = Sim_Multi_Voxel_Distribution(obj, RndParam, Opt)
+           % Ensure ORIGINAL protocol units on load
+            obj = setOriginalProtUnits(obj);
+            
            % SimVaryGUI
            SimRndResults = SimRnd(obj, RndParam, Opt);
+           
+           % Ensure USER protocol units after process
+            obj = setUserProtUnits(obj);
        end
 
 
@@ -394,4 +424,15 @@ end
             
         end
     end
+
+    methods(Access = protected)
+        function obj = qMRpatch(obj,loadedStruct, version)
+            obj = qMRpatch@AbstractModel(obj,loadedStruct, version);
+            if checkanteriorver(version,[2 5 0])
+                obj.OriginalProtEnabled = true;
+                obj = setUserProtUnits(obj);
+            end
+        end
+    end
+
 end
